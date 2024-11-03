@@ -683,7 +683,7 @@ void mDNS::runMainLoop() {
   MDNS_LOG << "Closed socket " << (num_sockets ? "s" : "") << "\n";
 }
 
-void mDNS::executeQuery(const std::string &service, int record) {
+void mDNS::executeQuery(ServiceQueries serviceQueries) {
   int sockets[32];
   int query_id[32];
   int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
@@ -698,22 +698,28 @@ void mDNS::executeQuery(const std::string &service, int record) {
   size_t capacity = 2048;
   void *buffer = malloc(capacity);
   void *user_data = 0;
-  size_t records;
 
-  const char *record_name = "PTR";
-  if (record == MDNS_RECORDTYPE_SRV)
-    record_name = "SRV";
-  else if (record == MDNS_RECORDTYPE_A)
-    record_name = "A";
-  else if (record == MDNS_RECORDTYPE_AAAA)
-    record_name = "AAAA";
-  else
-    record = MDNS_RECORDTYPE_PTR;
+  std::vector<mdns_query_t> queries;
 
-  MDNS_LOG << "Sending mDNS query: " << service << " " << record_name << "\n";
+  MDNS_LOG << "Sending mDNS query";
+  for (auto &query : serviceQueries) {
+    auto &[name, type] = query;
+    const char *record_name = "PTR";
+    if (type == MDNS_RECORDTYPE_SRV)
+      record_name = "SRV";
+    else if (type == MDNS_RECORDTYPE_A)
+      record_name = "A";
+    else if (type == MDNS_RECORDTYPE_AAAA)
+      record_name = "AAAA";
+    else
+      type = MDNS_RECORDTYPE_PTR;
+    queries.push_back(mdns_query_t{static_cast<mdns_record_type>(type), name.c_str(), name.length()});
+    MDNS_LOG << " : " << name.c_str() << " " << record_name;
+  }
+  MDNS_LOG << ("\n");
+
   for (int isock = 0; isock < num_sockets; ++isock) {
-    query_id[isock] = mdns_query_send(sockets[isock], (mdns_record_type)record, service.data(), strlen(service.data()),
-                                      buffer, capacity, 0);
+    query_id[isock] = mdns_multiquery_send(sockets[isock], queries.data(), queries.size(), buffer, capacity, 0);
     if (query_id[isock] < 0) {
       MDNS_LOG << "Failed to send mDNS query: " << strerror(errno) << "\n";
     }
@@ -723,6 +729,7 @@ void mDNS::executeQuery(const std::string &service, int record) {
   // get replies
   int res{};
   MDNS_LOG << "Reading mDNS query replies\n";
+  int records = 0;
   do {
     struct timeval timeout;
     timeout.tv_sec = 10;
@@ -736,17 +743,18 @@ void mDNS::executeQuery(const std::string &service, int record) {
       FD_SET(sockets[isock], &readfs);
     }
 
-    records = 0;
     res = select(nfds, &readfs, 0, 0, &timeout);
     if (res > 0) {
       for (int isock = 0; isock < num_sockets; ++isock) {
         if (FD_ISSET(sockets[isock], &readfs)) {
-          records += mdns_query_recv(sockets[isock], buffer, capacity, query_callback, user_data, query_id[isock]);
+          auto rec = mdns_query_recv(sockets[isock], buffer, capacity, query_callback, user_data, query_id[isock]);
+          if (rec > 0) records += rec;
         }
         FD_SET(sockets[isock], &readfs);
       }
     }
   } while (res > 0);
+  MDNS_LOG << "Read " << records << "records\n";
 
   free(buffer);
 

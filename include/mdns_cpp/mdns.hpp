@@ -30,7 +30,8 @@ class mDNS {
   void setServiceName(const std::string &name);
   void setServiceTxtRecord(const std::string &text_record);
 
-  void executeQuery(const std::string &service, int record);
+  using ServiceQueries = std::vector<std::pair<std::string, int>>;
+  void executeQuery(ServiceQueries service);
   void executeDiscovery();
 
  private:
