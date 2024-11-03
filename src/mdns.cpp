@@ -765,7 +765,7 @@ void mDNS::executeDiscovery() {
     throw std::runtime_error(msg);
   }
 
-  MDNS_LOG << "Opened " << num_sockets << " socket" << (num_sockets ? "s" : "") << " for DNS-SD\n";
+  MDNS_LOG << "Opened " << num_sockets << " socket" << (num_sockets > 1 ? "s" : "") << " for DNS-SD\n";
   MDNS_LOG << "Sending DNS-SD discovery\n";
   for (int isock = 0; isock < num_sockets; ++isock) {
     if (mdns_discovery_send(sockets[isock])) {
