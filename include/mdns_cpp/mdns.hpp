@@ -8,6 +8,7 @@
 
 #ifdef _WIN32
 #include <iphlpapi.h>
+#include <winsock2.h>
 #else
 #include <ifaddrs.h>
 #include <netdb.h>
@@ -29,7 +30,7 @@ class mDNS {
   void setServiceName(const std::string &name);
   void setServiceTxtRecord(const std::string &text_record);
 
-  void executeQuery(const std::string &service);
+  void executeQuery(const std::string &service, int record);
   void executeDiscovery();
 
  private:
