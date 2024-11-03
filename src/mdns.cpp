@@ -22,6 +22,15 @@ namespace mdns_cpp {
 
 static mdns_record_txt_t txtbuffer[128];
 
+class ServiceRecord {
+ public:
+  const char *service;
+  const char *hostname;
+  uint32_t address_ipv4;
+  uint8_t *address_ipv6;
+  uint16_t port;
+};
+
 int mDNS::openServiceSockets(int *sockets, int max_sockets) {
   // When receiving, each socket can receive data from all network interfaces
   // Thus we only need to open one socket for each address family

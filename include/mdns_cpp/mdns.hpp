@@ -4,8 +4,6 @@
 #include <string>
 #include <thread>
 
-#include "mdns_cpp/defs.hpp"
-
 struct sockaddr;
 
 namespace mdns_cpp {
