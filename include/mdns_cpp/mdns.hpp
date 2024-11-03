@@ -11,6 +11,7 @@
 #include <winsock2.h>
 #else
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #endif

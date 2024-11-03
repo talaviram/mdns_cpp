@@ -191,6 +191,8 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
     if (!ifa->ifa_addr) {
       continue;
     }
+    if (!(ifa->ifa_flags & IFF_UP) || !(ifa->ifa_flags & IFF_MULTICAST)) continue;
+    if ((ifa->ifa_flags & IFF_LOOPBACK) || (ifa->ifa_flags & IFF_POINTOPOINT)) continue;
 
     if (ifa->ifa_addr->sa_family == AF_INET) {
       struct sockaddr_in *saddr = (struct sockaddr_in *)ifa->ifa_addr;
@@ -357,6 +359,8 @@ int service_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns
     record_name = "A";
   else if (rtype == MDNS_RECORDTYPE_AAAA)
     record_name = "AAAA";
+  else if (rtype == MDNS_RECORDTYPE_TXT)
+    record_name = "TXT";
   else if (rtype == MDNS_RECORDTYPE_ANY)
     record_name = "ANY";
   else
@@ -594,7 +598,9 @@ void mDNS::runMainLoop() {
   // "<hostname>.<_service-name>._tcp.local."
   service_record.record_ptr = {.name = to_mdns_str(service_record.service),
                                .type = MDNS_RECORDTYPE_PTR,
-                               .data.ptr.name = to_mdns_str(service_record.service_instance)};
+                               .data.ptr.name = to_mdns_str(service_record.service_instance),
+                               .rclass = 0,
+                               .ttl = 0};
 
   // SRV record mapping "<hostname>.<_service-name>._tcp.local." to
   // "<hostname>.local." with port. Set weight & priority to 0.
@@ -603,29 +609,40 @@ void mDNS::runMainLoop() {
                                .data.srv.name = to_mdns_str(service_record.hostname_qualified),
                                .data.srv.port = service_record.port,
                                .data.srv.priority = 0,
-                               .data.srv.weight = 0};
+                               .data.srv.weight = 0,
+                               .rclass = 0,
+                               .ttl = 0};
 
   // A/AAAA records mapping "<hostname>.local." to IPv4/IPv6 addresses
   service_record.record_a = {.name = to_mdns_str(service_record.hostname_qualified),
                              .type = MDNS_RECORDTYPE_A,
-                             .data.a.addr = service_record.address_ipv4};
+                             .data.a.addr = service_record.address_ipv4,
+                             .rclass = 0,
+                             .ttl = 0};
   service_record.record_aaaa = {.name = to_mdns_str(service_record.hostname_qualified),
                                 .type = MDNS_RECORDTYPE_AAAA,
-                                .data.aaaa.addr = service_record.address_ipv6};
+                                .data.aaaa.addr = service_record.address_ipv6,
+                                .rclass = 0,
+                                .ttl = 0};
 
   // Add two test TXT records for our service instance name, will be coalesced into
   // one record with both key-value pair strings by the library
   service_record.txt_record[0] = {.name = to_mdns_str(service_record.service_instance),
                                   .type = MDNS_RECORDTYPE_TXT,
                                   .data.txt.key = {MDNS_STRING_CONST("test")},
-                                  .data.txt.value = {MDNS_STRING_CONST("1")}};
+                                  .data.txt.value = {MDNS_STRING_CONST("1")},
+                                  .rclass = 0,
+                                  .ttl = 0};
   service_record.txt_record[1] = {.name = to_mdns_str(service_record.service_instance),
                                   .type = MDNS_RECORDTYPE_TXT,
                                   .data.txt.key = {MDNS_STRING_CONST("other")},
-                                  .data.txt.value = {MDNS_STRING_CONST("value")}};
+                                  .data.txt.value = {MDNS_STRING_CONST("value")},
+                                  .rclass = 0,
+                                  .ttl = 0};
 
   // Send an announcement on startup of service
   {
+    MDNS_LOG << "Sending announce\n";
     mdns_record_t additional[5] = {{}};
     size_t additional_count = 0;
     additional[additional_count++] = service_record.record_srv;
@@ -663,6 +680,7 @@ void mDNS::runMainLoop() {
 
   // Send a goodbye on end of service
   {
+    MDNS_LOG << "Sending goodbye\n";
     mdns_record_t additional[5] = {{}};
     size_t additional_count = 0;
     additional[additional_count++] = service_record.record_srv;
