@@ -4,7 +4,15 @@
 #include <string>
 #include <thread>
 
-struct sockaddr;
+#include "mdns_cpp/utils.hpp"
+
+#ifdef _WIN32
+#include <iphlpapi.h>
+#else
+#include <ifaddrs.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#endif
 
 namespace mdns_cpp {
 
@@ -36,11 +44,8 @@ class mDNS {
 
   bool running_{false};
 
-  bool has_ipv4_{false};
-  bool has_ipv6_{false};
-
-  uint32_t service_address_ipv4_{0};
-  uint8_t service_address_ipv6_[16]{0};
+  struct sockaddr_in service_address_ipv4_;
+  struct sockaddr_in6 service_address_ipv6_;
 
   std::thread worker_thread_;
 };

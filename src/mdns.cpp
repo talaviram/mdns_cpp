@@ -7,15 +7,7 @@
 #include "mdns.h"
 #include "mdns_cpp/logger.hpp"
 #include "mdns_cpp/macros.hpp"
-#include "mdns_cpp/utils.hpp"
 
-#ifdef _WIN32
-#include <iphlpapi.h>
-#else
-#include <ifaddrs.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#endif
 #include <string.h>
 
 namespace mdns_cpp {
@@ -24,11 +16,18 @@ static mdns_record_txt_t txtbuffer[128];
 
 class ServiceRecord {
  public:
-  const char *service;
-  const char *hostname;
-  uint32_t address_ipv4;
-  uint8_t *address_ipv6;
+  std::string service;
+  std::string hostname;
+  std::string service_instance;
+  std::string hostname_qualified;
+  struct sockaddr_in address_ipv4;
+  struct sockaddr_in6 address_ipv6;
   uint16_t port;
+  mdns_record_t record_ptr;
+  mdns_record_t record_srv;
+  mdns_record_t record_a;
+  mdns_record_t record_aaaa;
+  mdns_record_t txt_record[2];
 };
 
 int mDNS::openServiceSockets(int *sockets, int max_sockets) {
@@ -119,11 +118,11 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
             (saddr->sin_addr.S_un.S_un_b.s_b3 != 0) || (saddr->sin_addr.S_un.S_un_b.s_b4 != 1)) {
           int log_addr = 0;
           if (first_ipv4) {
-            service_address_ipv4_ = saddr->sin_addr.S_un.S_addr;
+            service_address_ipv4_ = *saddr;
             first_ipv4 = 0;
             log_addr = 1;
           }
-          has_ipv4_ = 1;
+
           if (num_sockets < max_sockets) {
             saddr->sin_port = htons((unsigned short)port);
             int sock = mdns_socket_open_ipv4(saddr);
@@ -152,7 +151,7 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
             first_ipv6 = 0;
             log_addr = 1;
           }
-          has_ipv6_ = 1;
+
           if (num_sockets < max_sockets) {
             saddr->sin6_port = htons((unsigned short)port);
             int sock = mdns_socket_open_ipv6(saddr);
@@ -196,11 +195,11 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
       if (saddr->sin_addr.s_addr != htonl(INADDR_LOOPBACK)) {
         int log_addr = 0;
         if (first_ipv4) {
-          service_address_ipv4_ = saddr->sin_addr.s_addr;
+          service_address_ipv4_ = *saddr;
           first_ipv4 = 0;
           log_addr = 1;
         }
-        has_ipv4_ = 1;
+
         if (num_sockets < max_sockets) {
           saddr->sin_port = htons(port);
           int sock = mdns_socket_open_ipv4(saddr);
@@ -224,11 +223,11 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
       if (memcmp(saddr->sin6_addr.s6_addr, localhost, 16) && memcmp(saddr->sin6_addr.s6_addr, localhost_mapped, 16)) {
         int log_addr = 0;
         if (first_ipv6) {
-          memcpy(service_address_ipv6_, &saddr->sin6_addr, 16);
+          service_address_ipv6_ = *saddr;
           first_ipv6 = 0;
           log_addr = 1;
         }
-        has_ipv6_ = 1;
+
         if (num_sockets < max_sockets) {
           saddr->sin6_port = htons(port);
           int sock = mdns_socket_open_ipv6(saddr);
@@ -340,22 +339,22 @@ int service_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns
 
     const char dns_sd[] = "_services._dns-sd._udp.local.";
     const ServiceRecord *service_record = (const ServiceRecord *)user_data;
-    const size_t service_length = strlen(service_record->service);
+    const size_t service_length = service_record->service.length();
     char sendbuffer[256] = {0};
 
     if ((service.length == (sizeof(dns_sd) - 1)) && (strncmp(service.str, dns_sd, sizeof(dns_sd) - 1) == 0)) {
       MDNS_LOG << "  --> answer " << service_record->service << " \n";
-      mdns_discovery_answer(sock, from, addrlen, sendbuffer, sizeof(sendbuffer), service_record->service,
+      mdns_discovery_answer(sock, from, addrlen, sendbuffer, sizeof(sendbuffer), service_record->service.c_str(),
                             service_length);
     } else if ((service.length == service_length) &&
-               (strncmp(service.str, service_record->service, service_length) == 0)) {
+               (strncmp(service.str, service_record->service.c_str(), service_length) == 0)) {
       uint16_t unicast = (rclass & MDNS_UNICAST_RESPONSE);
-      MDNS_LOG << "  --> answer " << service_record->hostname << "." << service_record->service << " port "
+        MDNS_LOG << "  --> answer " << service_record->hostname << "." << service_record->service.c_str() << " port "
                << service_record->port << " (" << (unicast ? "unicast" : "multicast") << ")\n";
       if (!unicast) addrlen = 0;
       char txt_record[] = "asdf=1";
       mdns_query_answer(sock, from, addrlen, sendbuffer, sizeof(sendbuffer), query_id, service_record->service,
-                        service_length, service_record->hostname, strlen(service_record->hostname),
+                        service_length, service_record->hostname, service_record->hostname.length(),
                         service_record->address_ipv4, service_record->address_ipv6, (uint16_t)service_record->port,
                         txt_record, sizeof(txt_record));
     }
@@ -432,8 +431,8 @@ void mDNS::runMainLoop() {
   ServiceRecord service_record{};
   service_record.service = name_.data();
   service_record.hostname = hostname_.data();
-  service_record.address_ipv4 = has_ipv4_ ? service_address_ipv4_ : 0;
-  service_record.address_ipv6 = has_ipv6_ ? service_address_ipv6_ : 0;
+  service_record.address_ipv4 = service_address_ipv4_;
+  service_record.address_ipv6 = service_address_ipv6_;
   service_record.port = port_;
 
   // This is a crude implementation that checks for incoming queries
