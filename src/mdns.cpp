@@ -661,6 +661,22 @@ void mDNS::runMainLoop() {
     }
   }
 
+  // Send a goodbye on end of service
+  {
+    mdns_record_t additional[5] = {{}};
+    size_t additional_count = 0;
+    additional[additional_count++] = service_record.record_srv;
+    if (service_record.address_ipv4.sin_family == AF_INET) additional[additional_count++] = service_record.record_a;
+    if (service_record.address_ipv6.sin6_family == AF_INET6)
+      additional[additional_count++] = service_record.record_aaaa;
+    additional[additional_count++] = service_record.txt_record[0];
+    additional[additional_count++] = service_record.txt_record[1];
+
+    for (int isock = 0; isock < num_sockets; ++isock)
+      mdns_goodbye_multicast(sockets[isock], buffer.get(), capacity, service_record.record_ptr, 0, 0, additional,
+                             additional_count);
+  }
+
   for (int isock = 0; isock < num_sockets; ++isock) {
     mdns_socket_close(sockets[isock]);
   }
