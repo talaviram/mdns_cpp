@@ -555,6 +555,13 @@ void mDNS::runMainLoop() {
     throw std::runtime_error(msg);
   }
 
+  if (name_.length() == 0) {
+    const auto msg = "Error: nvalid service name\n";
+    MDNS_LOG << msg << "\n";
+    throw std::runtime_error(msg);
+  }
+  if (!name_.ends_with(".")) name_ += ".";
+
   MDNS_LOG << "Opened " << std::to_string(num_sockets) << " socket" << (num_sockets ? "s" : "")
            << " for mDNS service\n";
   MDNS_LOG << "Service mDNS: " << name_ << ":" << port_ << "\n";
