@@ -91,7 +91,7 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
                                &address_size);
     if (ret == ERROR_BUFFER_OVERFLOW) {
       free(adapter_address);
-      adapter_address = 0;
+      address_size *= 2;
     } else {
       break;
     }
