@@ -181,6 +181,8 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
         }
       } else if (unicast->Address.lpSockaddr->sa_family == AF_INET6) {
         struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)unicast->Address.lpSockaddr;
+        // Ignore link-local addresses
+        if (saddr->sin6_scope_id) continue;
         static constexpr unsigned char localhost[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
         static constexpr unsigned char localhost_mapped[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0, 0, 1};
         if ((unicast->DadState == NldsPreferred) && memcmp(saddr->sin6_addr.s6_addr, localhost, 16) &&
@@ -260,6 +262,8 @@ int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
       }
     } else if (ifa->ifa_addr->sa_family == AF_INET6) {
       struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)ifa->ifa_addr;
+      // Ignore link-local addresses
+      if (saddr->sin6_scope_id) continue;
       static constexpr unsigned char localhost[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
       static constexpr unsigned char localhost_mapped[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0, 0, 1};
       if (memcmp(saddr->sin6_addr.s6_addr, localhost, 16) && memcmp(saddr->sin6_addr.s6_addr, localhost_mapped, 16)) {
