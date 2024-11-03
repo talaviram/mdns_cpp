@@ -615,7 +615,7 @@ void mDNS::runMainLoop() {
   }
   if (!name_.ends_with(".")) name_ += ".";
 
-  MDNS_LOG << "Opened " << std::to_string(num_sockets) << " socket" << (num_sockets ? "s" : "")
+  MDNS_LOG << "Opened " << std::to_string(num_sockets) << " socket" << (num_sockets > 1 ? "s" : "")
            << " for mDNS service\n";
   MDNS_LOG << "Service mDNS: " << name_ << ":" << port_ << "\n";
   MDNS_LOG << "Hostname: " << hostname_.data() << "\n";
@@ -747,7 +747,7 @@ void mDNS::runMainLoop() {
   for (int isock = 0; isock < num_sockets; ++isock) {
     mdns_socket_close(sockets[isock]);
   }
-  MDNS_LOG << "Closed socket " << (num_sockets ? "s" : "") << "\n";
+  MDNS_LOG << "Closed socket " << (num_sockets > 1 ? "s" : "") << "\n";
 }
 
 void mDNS::executeQuery(ServiceQueries serviceQueries) {
@@ -760,7 +760,7 @@ void mDNS::executeQuery(ServiceQueries serviceQueries) {
     MDNS_LOG << msg << "\n";
     throw std::runtime_error(msg);
   }
-  MDNS_LOG << "Opened " << num_sockets << " socket" << (num_sockets ? "s" : "") << " for mDNS query\n";
+  MDNS_LOG << "Opened " << num_sockets << " socket" << (num_sockets > 1 ? "s" : "") << " for mDNS query\n";
 
   size_t capacity = 2048;
   void *buffer = malloc(capacity);
@@ -828,7 +828,7 @@ void mDNS::executeQuery(ServiceQueries serviceQueries) {
   for (int isock = 0; isock < num_sockets; ++isock) {
     mdns_socket_close(sockets[isock]);
   }
-  MDNS_LOG << "Closed socket" << (num_sockets ? "s" : "") << "\n";
+  MDNS_LOG << "Closed socket" << (num_sockets > 1 ? "s" : "") << "\n";
 }
 
 void mDNS::executeDiscovery() {
@@ -886,7 +886,7 @@ void mDNS::executeDiscovery() {
   for (int isock = 0; isock < num_sockets; ++isock) {
     mdns_socket_close(sockets[isock]);
   }
-  MDNS_LOG << "Closed socket" << (num_sockets ? "s" : "") << "\n";
+  MDNS_LOG << "Closed socket" << (num_sockets > 1 ? "s" : "") << "\n";
 }
 
 void mDNS::runDumpMode(int *sockets, const int num_sockets) {
