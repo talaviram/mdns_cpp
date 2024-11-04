@@ -665,10 +665,18 @@ void mDNS::runMainLoop() {
                                 .rclass = 0,
                                 .ttl = 0};
 
+#if EXAMPLE_TXT_RECORD
   // Add two test TXT records for our service instance name, will be coalesced into
   // one record with both key-value pair strings by the library
   service_record.txt_records_as_kv.push_back({"test", "1"});
   service_record.txt_records_as_kv.push_back({"other", "value"});
+#else
+  service_record.txt_records_as_kv = txt_records_;
+
+  // From my tests it seems that some implementations would discard
+  // other records if no txt record so we push empty one.
+  if (service_record.txt_records_as_kv.size() == 0) service_record.txt_records_as_kv.push_back({"", ""});
+#endif
 
   // Send an announcement on startup of service
   {
