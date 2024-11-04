@@ -74,6 +74,44 @@ int mDNS::openServiceSockets(int *sockets, int max_sockets) {
   return num_sockets;
 }
 
+// Callback handling questions and answers dump
+static int dump_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns_entry_type_t entry,
+                         uint16_t query_id, uint16_t rtype, uint16_t rclass, uint32_t ttl, const void *data,
+                         size_t size, size_t name_offset, size_t name_length, size_t record_offset,
+                         size_t record_length, void *user_data) {
+  char addrbuffer[64]{};
+  char namebuffer[256]{};
+
+  const auto fromaddrstr = ipAddressToString(addrbuffer, sizeof(addrbuffer), from, addrlen);
+  size_t offset = name_offset;
+  mdns_string_t name = mdns_string_extract(data, size, &offset, namebuffer, sizeof(namebuffer));
+  const char *record_name = 0;
+  if (rtype == MDNS_RECORDTYPE_PTR)
+    record_name = "PTR";
+  else if (rtype == MDNS_RECORDTYPE_SRV)
+    record_name = "SRV";
+  else if (rtype == MDNS_RECORDTYPE_A)
+    record_name = "A";
+  else if (rtype == MDNS_RECORDTYPE_AAAA)
+    record_name = "AAAA";
+  else if (rtype == MDNS_RECORDTYPE_TXT)
+    record_name = "TXT";
+  else if (rtype == MDNS_RECORDTYPE_ANY)
+    record_name = "ANY";
+  else
+    record_name = "<UNKNOWN>";
+  const char *entry_type = "Question";
+  if (entry == MDNS_ENTRYTYPE_ANSWER)
+    entry_type = "Answer";
+  else if (entry == MDNS_ENTRYTYPE_AUTHORITY)
+    entry_type = "Authority";
+  else if (entry == MDNS_ENTRYTYPE_ADDITIONAL)
+    entry_type = "Additional";
+  printf("%.*s: %s %s %.*s rclass 0x%x ttl %u\n", (int)fromaddrstr.length(), fromaddrstr.c_str(), entry_type,
+         record_name, MDNS_STRING_FORMAT(name), (unsigned int)rclass, ttl);
+  return 0;
+}
+
 int mDNS::openClientSockets(int *sockets, int max_sockets, int port) {
   // When sending, each socket can only send to one network interface
   // Thus we need to open one socket for each interface and address family
@@ -523,7 +561,8 @@ int service_callback(int sock, const struct sockaddr *from, size_t addrlen, mdns
 
 mDNS::~mDNS() { stopService(); }
 
-void mDNS::startService() {
+void mDNS::startService(const bool dumpMode) {
+  dumpMode_ = dumpMode;
   if (running_) {
     stopService();
   }
@@ -557,6 +596,12 @@ void mDNS::runMainLoop() {
     const auto msg = "Error: Failed to open any client sockets";
     MDNS_LOG << msg << "\n";
     throw std::runtime_error(msg);
+  }
+
+  if (dumpMode_) {
+    runDumpMode(sockets, num_sockets);
+    dumpMode_ = false;
+    return;
   }
 
   if (name_.length() == 0) {
@@ -838,6 +883,35 @@ void mDNS::executeDiscovery() {
     mdns_socket_close(sockets[isock]);
   }
   MDNS_LOG << "Closed socket" << (num_sockets ? "s" : "") << "\n";
+}
+
+void mDNS::runDumpMode(int *sockets, const int num_sockets) {
+  printf("Opened %d socket%s for mDNS dump\n", num_sockets, num_sockets > 1 ? "s" : "");
+  size_t capacity = 2048;
+  void *buffer = malloc(capacity);
+  // This is a crude implementation that checks for incoming queries and answers
+  while (running_) {
+    int nfds = 0;
+    fd_set readfs;
+    FD_ZERO(&readfs);
+    for (int isock = 0; isock < num_sockets; ++isock) {
+      if (sockets[isock] >= nfds) nfds = sockets[isock] + 1;
+      FD_SET(sockets[isock], &readfs);
+    }
+    if (select(nfds, &readfs, 0, 0, 0) >= 0) {
+      for (int isock = 0; isock < num_sockets; ++isock) {
+        if (FD_ISSET(sockets[isock], &readfs)) {
+          mdns_socket_listen(sockets[isock], buffer, capacity, dump_callback, 0);
+        }
+        FD_SET(sockets[isock], &readfs);
+      }
+    } else {
+      break;
+    }
+  }
+  free(buffer);
+  for (int isock = 0; isock < num_sockets; ++isock) mdns_socket_close(sockets[isock]);
+  printf("Closed socket%s\n", num_sockets > 1 ? "s" : "");
 }
 
 }  // namespace mdns_cpp

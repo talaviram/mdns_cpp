@@ -22,7 +22,7 @@ class mDNS {
  public:
   ~mDNS();
 
-  void startService();
+  void startService(bool dumpMode = false);
   void stopService();
   bool isServiceRunning();
 
@@ -37,6 +37,7 @@ class mDNS {
 
  private:
   void runMainLoop();
+  void runDumpMode(int *sockets, int num_sockets);
   int openClientSockets(int *sockets, int max_sockets, int port);
   int openServiceSockets(int *sockets, int max_sockets);
 
@@ -46,6 +47,7 @@ class mDNS {
   std::string txt_record_{};
 
   bool running_{false};
+  bool dumpMode_{false};
 
   struct sockaddr_in service_address_ipv4_;
   struct sockaddr_in6 service_address_ipv6_;
