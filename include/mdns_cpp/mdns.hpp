@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <string>
 #include <thread>
 
@@ -29,7 +30,8 @@ class mDNS {
   void setServiceHostname(const std::string &hostname);
   void setServicePort(std::uint16_t port);
   void setServiceName(const std::string &name);
-  void setServiceTxtRecord(const std::string &text_record);
+
+  void setServiceTxtRecord(const std::vector<std::pair<std::string, std::string>> kvPairs);
 
   using ServiceQueries = std::vector<std::pair<std::string, int>>;
   void executeQuery(ServiceQueries service);
@@ -44,7 +46,7 @@ class mDNS {
   std::string hostname_{"dummy-host"};
   std::string name_{"_http._tcp.local."};
   std::uint16_t port_{42424};
-  std::string txt_record_{};
+  std::vector<std::pair<std::string, std::string>> txt_records_;
 
   std::atomic<bool> running_{false};
   bool dumpMode_{false};
