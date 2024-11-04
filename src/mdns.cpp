@@ -715,7 +715,10 @@ void mDNS::runMainLoop() {
       FD_SET(sockets[isock], &readfs);
     }
 
-    if (select(nfds, &readfs, 0, 0, 0) >= 0) {
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100000;
+    if (select(nfds, &readfs, 0, 0, &timeout) >= 0) {
       for (int isock = 0; isock < num_sockets; ++isock) {
         if (FD_ISSET(sockets[isock], &readfs)) {
           mdns_socket_listen(sockets[isock], buffer.get(), capacity, service_callback, &service_record);
@@ -902,7 +905,10 @@ void mDNS::runDumpMode(int *sockets, const int num_sockets) {
       if (sockets[isock] >= nfds) nfds = sockets[isock] + 1;
       FD_SET(sockets[isock], &readfs);
     }
-    if (select(nfds, &readfs, 0, 0, 0) >= 0) {
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100000;
+    if (select(nfds, &readfs, 0, 0, &timeout) >= 0) {
       for (int isock = 0; isock < num_sockets; ++isock) {
         if (FD_ISSET(sockets[isock], &readfs)) {
           mdns_socket_listen(sockets[isock], buffer, capacity, dump_callback, 0);
