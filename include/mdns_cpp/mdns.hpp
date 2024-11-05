@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <thread>
+#include <variant>
 
 #include "mdns_cpp/utils.hpp"
 
@@ -21,7 +22,7 @@
 namespace mdns_cpp {
 
 enum class RecordType {
-  IGNORE = 0,
+  SKIP = 0,
   // Address
   A = 1,
   // Domain Name pointer
@@ -34,6 +35,21 @@ enum class RecordType {
   SRV = 33,
   // Any available records
   ANY = 255
+};
+
+struct SRVRecord {
+  uint16_t priority;
+  uint16_t weight;
+  uint16_t port;
+  std::string name;
+};
+
+struct Record {
+  std::string origin;
+  RecordType type;
+  std::variant<std::string, std::map<std::string, std::string>, SRVRecord> content;
+  uint16_t rclass;
+  uint32_t ttl;
 };
 
 class mDNS {
