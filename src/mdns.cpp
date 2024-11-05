@@ -824,7 +824,7 @@ void mDNS::executeQuery(ServiceQueries serviceQueries) {
       }
     }
   } while (res > 0);
-  MDNS_LOG << "Read " << records << "records\n";
+  MDNS_LOG << "Read " << records << " records\n";
 
   free(buffer);
 
