@@ -65,7 +65,7 @@ class mDNS {
   void setServiceTxtRecord(const std::vector<std::pair<std::string, std::string>> kvPairs);
 
   using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
-  void executeQuery(ServiceQueries service);
+  std::vector<Record> executeQuery(ServiceQueries service);
   void executeDiscovery();
 
  private:
