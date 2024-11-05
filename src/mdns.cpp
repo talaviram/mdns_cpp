@@ -750,14 +750,14 @@ void mDNS::executeQuery(ServiceQueries serviceQueries) {
   for (auto &query : serviceQueries) {
     auto &[name, type] = query;
     const char *record_name = "PTR";
-    if (type == MDNS_RECORDTYPE_SRV)
+    if (type == RecordType::SRV)
       record_name = "SRV";
-    else if (type == MDNS_RECORDTYPE_A)
+    else if (type == RecordType::A)
       record_name = "A";
-    else if (type == MDNS_RECORDTYPE_AAAA)
+    else if (type == RecordType::AAAA)
       record_name = "AAAA";
     else
-      type = MDNS_RECORDTYPE_PTR;
+      type = RecordType::PTR;
     queries.push_back(mdns_query_t{static_cast<mdns_record_type>(type), name.c_str(), name.length()});
     MDNS_LOG << " : " << name.c_str() << " " << record_name;
   }

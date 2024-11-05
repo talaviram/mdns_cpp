@@ -19,6 +19,22 @@
 
 namespace mdns_cpp {
 
+enum class RecordType {
+  IGNORE = 0,
+  // Address
+  A = 1,
+  // Domain Name pointer
+  PTR = 12,
+  // Arbitrary text string
+  TXT = 16,
+  // IP6 Address [Thomson]
+  AAAA = 28,
+  // Server Selection [RFC2782]
+  SRV = 33,
+  // Any available records
+  ANY = 255
+};
+
 class mDNS {
  public:
   ~mDNS();
@@ -33,7 +49,7 @@ class mDNS {
 
   void setServiceTxtRecord(const std::vector<std::pair<std::string, std::string>> kvPairs);
 
-  using ServiceQueries = std::vector<std::pair<std::string, int>>;
+  using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
   void executeQuery(ServiceQueries service);
   void executeDiscovery();
 
