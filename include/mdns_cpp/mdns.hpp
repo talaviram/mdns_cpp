@@ -35,6 +35,21 @@ enum class RecordType {
   ANY = 255
 };
 
+struct SRVRecord {
+  uint16_t priority;
+  uint16_t weight;
+  uint16_t port;
+  std::string name;
+};
+
+struct Record {
+  std::string origin;
+  RecordType type;
+  std::variant<std::string, std::map<std::string, std::string>, SRVRecord> content;
+  uint16_t rclass;
+  uint32_t ttl;
+};
+
 class mDNS {
  public:
   ~mDNS();
