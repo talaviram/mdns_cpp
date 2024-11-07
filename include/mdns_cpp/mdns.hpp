@@ -40,6 +40,8 @@ struct SRVRecord {
   uint16_t weight;
   uint16_t port;
   std::string name;
+
+  auto operator<=>(const SRVRecord &) const = default;
 };
 
 struct Record {
@@ -48,6 +50,11 @@ struct Record {
   std::variant<std::string, std::map<std::string, std::string>, SRVRecord> content;
   uint16_t rclass;
   uint32_t ttl;
+
+  bool operator==(const Record &other) const {
+    return std::tie(origin, type, content, rclass, ttl) ==
+           std::tie(other.origin, other.type, other.content, other.rclass, other.ttl);
+  }
 };
 
 class mDNS {
@@ -66,6 +73,7 @@ class mDNS {
 
   using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
   std::vector<Record> executeQuery(ServiceQueries service);
+  // this is still blocking
   void executeQuery(ServiceQueries service, std::function<void(Record)> onNewRecord);
   void executeDiscovery();
 
