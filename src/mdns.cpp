@@ -763,7 +763,8 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
   return replies;
 }
 
-void mDNS::executeQuery(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord) {
+void mDNS::executeQuery(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord,
+                        const int timeoutInSecs) {
   int sockets[32];
   int query_id[32];
   int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
@@ -807,14 +808,14 @@ void mDNS::executeQuery(ServiceQueries serviceQueries, std::function<void(Record
 
   user_data = reinterpret_cast<void *>(&onNewRecord);
 
-  // This is a simple implementation that loops for 5 seconds or as long as we
+  // This is a simple implementation that loops for timeoutInSecs seconds or as long as we
   // get replies
   int res{};
   MDNS_LOG << "Reading mDNS query replies\n";
   int records = 0;
   do {
     struct timeval timeout;
-    timeout.tv_sec = 10;
+    timeout.tv_sec = timeoutInSecs;
     timeout.tv_usec = 0;
 
     int nfds = 0;
