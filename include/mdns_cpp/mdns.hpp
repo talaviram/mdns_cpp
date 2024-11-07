@@ -68,6 +68,7 @@ class mDNS {
 
   using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
   std::vector<Record> executeQuery(ServiceQueries service);
+  void executeQuery(ServiceQueries service, std::function<void(Record)> onNewRecord);
   void executeDiscovery();
 
  private:
