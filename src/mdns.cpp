@@ -761,12 +761,6 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
   int query_id[32];
   int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
 
-  if (serviceQueries.size() > 32) {
-    const auto msg = "Max supported service queries is 32.";
-    MDNS_LOG << msg << "\n";
-    throw std::runtime_error(msg);
-  }
-
   if (num_sockets <= 0) {
     const auto msg = "Failed to open any client sockets";
     MDNS_LOG << msg << "\n";
