@@ -757,6 +757,13 @@ void mDNS::runMainLoop() {
 }
 
 std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
+  std::vector<Record> replies;
+  std::function<void(Record)> onNewRecord = [&replies](Record r) { replies.push_back(r); };
+  executeQuery(serviceQueries, onNewRecord);
+  return replies;
+}
+
+void mDNS::executeQuery(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord) {
   int sockets[32];
   int query_id[32];
   int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
@@ -798,8 +805,6 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
     }
   }
 
-  std::vector<Record> replies;
-  std::function<void(Record)> onNewRecord = [&replies](Record r) { replies.push_back(r); };
   user_data = reinterpret_cast<void *>(&onNewRecord);
 
   // This is a simple implementation that loops for 5 seconds or as long as we
@@ -839,8 +844,6 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
     mdns_socket_close(sockets[isock]);
   }
   MDNS_LOG << "Closed socket" << (num_sockets > 1 ? "s" : "") << "\n";
-
-  return replies;
 }
 
 void mDNS::executeDiscovery() {
