@@ -334,9 +334,9 @@ static int query_callback(int sock, const struct sockaddr *from, size_t addrlen,
   (void)sizeof(name_length);
   (void)sizeof(user_data);
 
-  std::vector<Record> *repliesPtr = nullptr;
+  std::function<void(Record)> onReplyPtr = {};
   if (user_data != 0) {
-    repliesPtr = reinterpret_cast<std::vector<Record> *>(user_data);
+    onReplyPtr = *reinterpret_cast<std::function<void(Record)> *>(user_data);
   }
 
   static char addrbuffer[64]{};
@@ -413,7 +413,7 @@ static int query_callback(int sock, const struct sockaddr *from, size_t addrlen,
     record.content = to_std_str(entrystr);
   }
   MDNS_LOG << std::string(str_buffer);
-  if (repliesPtr != nullptr) repliesPtr->push_back(record);
+  if (onReplyPtr) onReplyPtr(record);
   return 0;
 }
 
@@ -803,7 +803,8 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
   }
 
   std::vector<Record> replies;
-  user_data = reinterpret_cast<void *>(&replies);
+  std::function<void(Record)> onNewRecord = [&replies](Record r) { replies.push_back(r); };
+  user_data = reinterpret_cast<void *>(&onNewRecord);
 
   // This is a simple implementation that loops for 5 seconds or as long as we
   // get replies
