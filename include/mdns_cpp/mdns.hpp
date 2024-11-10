@@ -74,7 +74,7 @@ class mDNS {
   void setServiceTxtRecord(const std::vector<std::pair<std::string, std::string>> kvPairs);
 
   using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
-  std::vector<Record> executeQuery(ServiceQueries service);
+  std::vector<Record> executeQuery(ServiceQueries service, int timeoutInSecs = 10);
   // this is still blocking
   void executeQuery(ServiceQueries service, std::function<void(Record)> onNewRecord, int timeoutInSecs = 10);
   void executeDiscovery();

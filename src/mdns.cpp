@@ -760,10 +760,10 @@ void mDNS::runMainLoop() {
   MDNS_LOG << "Closed socket " << (num_sockets > 1 ? "s" : "") << "\n";
 }
 
-std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries) {
+std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries, const int timeoutInSecs) {
   std::vector<Record> replies;
   std::function<void(Record)> onNewRecord = [&replies](Record r) { replies.push_back(r); };
-  executeQuery(serviceQueries, onNewRecord);
+  executeQuery(serviceQueries, onNewRecord, timeoutInSecs);
   return replies;
 }
 
