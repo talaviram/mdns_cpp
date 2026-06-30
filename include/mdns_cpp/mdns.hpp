@@ -74,12 +74,18 @@ class mDNS {
   void setServiceTxtRecord(const std::vector<std::pair<std::string, std::string>> kvPairs);
 
   using ServiceQueries = std::vector<std::pair<std::string, RecordType>>;
+  // One-shot query: ephemeral port, unicast (QU) response. Best for a quick resolve.
   std::vector<Record> executeQuery(ServiceQueries service, int timeoutInSecs = 10);
   // this is still blocking
   void executeQuery(ServiceQueries service, std::function<void(Record)> onNewRecord, int timeoutInSecs = 10);
+  // Browse: binds MDNS_PORT for a multicast response. Reliable on the same host (unicast replies
+  // race there); use for repeated discovery loops. Still blocking for timeoutInSecs.
+  std::vector<Record> browse(ServiceQueries service, int timeoutInSecs = 10);
+  void browse(ServiceQueries service, std::function<void(Record)> onNewRecord, int timeoutInSecs = 10);
   void executeDiscovery();
 
  private:
+  void runQuery(ServiceQueries service, std::function<void(Record)> onNewRecord, int timeoutInSecs, int bindPort);
   void runMainLoop();
   void runDumpMode(int *sockets, int num_sockets);
   int openClientSockets(int *sockets, int max_sockets, int port);

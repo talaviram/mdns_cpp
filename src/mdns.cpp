@@ -769,9 +769,30 @@ std::vector<Record> mDNS::executeQuery(ServiceQueries serviceQueries, const int 
 
 void mDNS::executeQuery(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord,
                         const int timeoutInSecs) {
+  // One-shot query: bind an ephemeral port so the responder replies unicast (RFC 6762 QU).
+  runQuery(serviceQueries, onNewRecord, timeoutInSecs, 0);
+}
+
+std::vector<Record> mDNS::browse(ServiceQueries serviceQueries, const int timeoutInSecs) {
+  std::vector<Record> replies;
+  std::function<void(Record)> onNewRecord = [&replies](Record r) { replies.push_back(r); };
+  browse(serviceQueries, onNewRecord, timeoutInSecs);
+  return replies;
+}
+
+void mDNS::browse(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord, const int timeoutInSecs) {
+  // Browse: bind MDNS_PORT so the query asks for a multicast response (mdns_multiquery_send only
+  // clears the unicast bit on a 5353-bound socket). Multicast is looped back to every group member,
+  // so same-host discovery is reliable where unicast replies race. Coexists with the OS responder
+  // on 5353 via SO_REUSEPORT (set in mdns_socket_setup).
+  runQuery(serviceQueries, onNewRecord, timeoutInSecs, MDNS_PORT);
+}
+
+void mDNS::runQuery(ServiceQueries serviceQueries, std::function<void(Record)> onNewRecord, const int timeoutInSecs,
+                    const int bindPort) {
   int sockets[32];
   int query_id[32];
-  int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), 0);
+  int num_sockets = openClientSockets(sockets, sizeof(sockets) / sizeof(sockets[0]), bindPort);
 
   if (num_sockets <= 0) {
     const auto msg = "Failed to open any client sockets";
